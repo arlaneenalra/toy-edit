@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.31)
 project(toy-edit VERSION 0.0.1)
 
+set(UPDATE_TYPE git)
+
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(toy_edit main.cpp
-        include/version.h)
+add_subdirectory(src)
