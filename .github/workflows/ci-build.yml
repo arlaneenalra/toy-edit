@@ -62,8 +62,8 @@ jobs:
     needs: clone-and-find-tag
     runs-on: ubuntu-latest
 
-    container:
-      image: ghcr.io/arlaneenalra/watcom-docker
+    #container:
+    #  image: ghcr.io/arlaneenalra/watcom-docker
 
     steps:
       - name: Check out the repo
