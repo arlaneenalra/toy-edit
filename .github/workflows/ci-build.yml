@@ -1,0 +1,139 @@
+name: CI Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump-level:
+        required: true
+        type: choice
+        description: 'The semver bump level'
+        options:
+          - 'major'
+          - 'minor'
+          - 'patch'
+          - 'premajor'
+          - 'preminor'
+          - 'prepatch'
+          - 'prerelease'
+        default: 'patch'
+  push:
+    branches:
+      - main
+      - '*'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  clone-and-find-tag:
+    runs-on: ubuntu-latest
+
+    outputs:
+      new_version: ${{ steps.bump.outputs.new_version }}
+
+    steps:
+      - name: Set default bump level
+        id: default
+        run: |
+          BUMP_LEVEL=${{ github.event.inputs.bump_level }}
+          echo "bump_level=${BUMP_LEVEL:-patch}" >> $GITHUB_OUTPUT
+
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+        # See: https://github.com/marketplace/actions/semver-bump-action
+      - name: Get Latest Tag
+        id: current
+        run: |
+          git fetch --tags
+          latest_tag=$(git tag --sort=taggerdate | tail -n 1)
+          echo "current version is: $latest_tag"
+          echo "latest_tag=$latest_tag" >> $GITHUB_OUTPUT
+
+      - name: Bump Minor Version
+        id: bump
+        uses: cbrgm/semver-bump-action@main
+        with:
+          current-version: ${{ steps.current.outputs.latest_tag }}
+          bump-level: ${{ steps.default.outputs.bump_level }}
+
+  build:
+    needs: clone-and-find-tag
+    runs-on: ubuntu-latest
+
+    #container:
+    #  image: ghcr.io/arlaneenalra/watcom-docker
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Build Project
+        uses: threeal/cmake-action@v2.1.0
+        with:
+          build-dir: cmake-build
+
+#      - name: Build and package everything
+#        run: |
+#          # ./scripts/write-version.sh "${{ needs.clone-and-find-tag.outputs.new_version }}"
+#
+#          make -j 5 WATCOM_DOCKER=  dist
+#
+#      - name: Upload version.h
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: version
+#          path: tool/version.h
+#
+#      - name: Upload distributions
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: distributions
+#          path: ./*.zip
+#          retention-days: 5
+#
+#
+#  tag-release:
+#    runs-on: ubuntu-latest
+#
+#    needs:
+#      - build
+#      - clone-and-find-tag
+#
+#    if: github.ref == 'refs/heads/main'
+#
+#    steps:
+#      - name: Check out the repo
+#        uses: actions/checkout@v4
+#
+#      - name: Pull artifacts from build
+#        uses: actions/download-artifact@v4.1.8
+#        with:
+#          name: distributions
+#          path: dist
+#          github-token: ${{ github.token }}
+#
+#      - name: Pull artifacts from build
+#        uses: actions/download-artifact@v4.1.8
+#        with:
+#          name: version
+#          path: tool
+#          github-token: ${{ github.token }}
+#
+#      - name: Tag new release
+#        run: |
+#          git config --global user.email "release-bot@thenextbug.com"
+#          git config --global user.name "release-bot"
+#          git commit -a -m "Tagging version ${{ needs.clone-and-find-tag.outputs.new_version }}"
+#          git tag ${{ needs.clone-and-find-tag.outputs.new_version }}
+#          git push --tags
+#
+#      - name: Create release and upload artifacts
+#        env:
+#          GH_TOKEN: ${{ github.token }}
+#          GH_REPO: ${{ github.repository }}
+#
+#        run: gh release create ${{ needs.clone-and-find-tag.outputs.new_version }} --generate-notes --prerelease dist/*.zip
+#
+#
