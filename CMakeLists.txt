@@ -5,4 +5,10 @@ set(UPDATE_TYPE git)
 
 set(CMAKE_CXX_STANDARD 20)
 
+include(CTest)
+
 add_subdirectory(src)
+
+add_subdirectory(test)
+
+ENABLE_TESTING()
